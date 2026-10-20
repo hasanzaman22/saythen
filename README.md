@@ -38,6 +38,17 @@ SayThen: Bu təlimat icra olunsun?
 Short proposals skip the Read tabs: each Approve option previews its whole
 version instead.
 
+## Supported languages
+
+You can write in any language Claude understands, and mix languages, slang,
+typos, and shorthand. The dialog and the translation use the language you
+wrote in; the instruction Claude receives is English unless you choose your
+own language.
+
+The test scenarios cover Azerbaijani, Turkish, Russian, English, and
+mixed-language requests. Other languages work the same way but have not been
+measured.
+
 ## Why it exists
 
 AI coding agents work best with clear, specific English instructions. Many
@@ -230,6 +241,26 @@ is denied, and the next message you send ends the SayThen request.
 - No API keys, network services, or extra packages.
 
 ## Install
+
+### Ask Claude Code to install it
+
+Paste this into Claude Code:
+
+```text
+Install SayThen from https://github.com/hasanzaman22/saythen
+```
+
+Claude clones the repository to a temporary directory and runs
+`./install.sh`, which installs SayThen for your user. Claude Code asks for
+permission before it runs each command. To install into the current project
+only, add "for this project only".
+
+For Claude: clone the repository to a temporary directory, run `./install.sh`
+from it (or `./install.sh --project <current directory>` when the user asks
+for this project only), report what it printed, and delete the temporary
+clone.
+
+### Install by hand
 
 Clone the repository, then install for your user (all projects):
 
