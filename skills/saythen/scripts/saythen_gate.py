@@ -139,6 +139,11 @@ def state_dir() -> Path:
     override = os.environ.get("SAYTHEN_STATE_DIR")
     if override:
         return Path(override)
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.path.join(
+            os.path.expanduser("~"), "AppData", "Local"
+        )
+        return Path(base) / "saythen"
     base = os.environ.get("XDG_STATE_HOME") or os.path.join(
         os.path.expanduser("~"), ".local", "state"
     )
@@ -760,9 +765,9 @@ def handle_user_prompt_submit(payload: Dict[str, Any]) -> Optional[Dict[str, Any
 
 
 def read_payload() -> Dict[str, Any]:
-    raw = sys.stdin.read()
+    # Hook input is UTF-8 JSON on every OS, whatever the console code page.
     try:
-        payload = json.loads(raw)
+        payload = json.loads(sys.stdin.buffer.read().decode("utf-8"))
     except ValueError as exc:
         raise GateError("hook input is not valid JSON") from exc
     if not isinstance(payload, dict):
@@ -776,7 +781,17 @@ def emit(result: Optional[Dict[str, Any]]) -> None:
         sys.stdout.write("\n")
 
 
+def use_utf8_output() -> None:
+    """Write UTF-8 even where the console code page is not (Windows)."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv: list) -> int:
+    use_utf8_output()
     if len(argv) < 2:
         sys.stderr.write(__doc__ or "")
         return 64

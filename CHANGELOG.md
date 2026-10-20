@@ -28,7 +28,12 @@ First release.
   professional field outside software get a one-line role, the field's normal
   standard, and an editable Assumptions list. Level follows the deliverable,
   so a short request for a program is treated as a multi-part task.
-- `install.sh` for user and project installs, and for uninstalling.
+- `install.py` for user and project installs and uninstalling, on macOS,
+  Linux, and Windows (`install.sh` runs it on macOS and Linux). It fills in
+  the Python command for the machine (`python3`, or `py` or `python` on
+  Windows) and writes hooks that run Python directly, so Windows does not
+  need Git Bash. The gate reads and writes UTF-8 on every OS and keeps its
+  state in `%LOCALAPPDATA%\saythen` on Windows.
 
 ### Verified for this release
 

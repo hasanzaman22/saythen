@@ -9,7 +9,7 @@ review.
 ```sh
 git clone https://github.com/hasanzaman22/saythen.git
 cd saythen
-./install.sh --project /path/to/a/test/project   # try your changes in a scratch project
+python3 install.py --project /path/to/a/test/project   # try your changes in a scratch project
 ```
 
 You need Python 3.9 or later. There are no dependencies to install.

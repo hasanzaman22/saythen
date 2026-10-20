@@ -30,6 +30,7 @@ import select
 import shutil
 import signal
 import struct
+import subprocess
 import sys
 import tempfile
 import termios
@@ -54,9 +55,12 @@ class Session:
         if fixture:
             shutil.copytree(FIXTURES / fixture, self.project)
         self.state_dir = workdir / "state"
-        skills = self.project / ".claude" / "skills"
-        skills.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(SKILL_DIR, skills / "saythen")
+        self.project.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            [sys.executable, str(ROOT / "install.py"), "--project", str(self.project)],
+            check=True,
+            capture_output=True,
+        )
         self.log = open(workdir / "pty.log", "wb")
         self.buffer = b""
         self.host_prompts = 0

@@ -3,13 +3,13 @@ name: saythen-model
 description: Choose the model SayThen uses to draft and translate proposals, without changing the session model.
 argument-hint: "[haiku|sonnet|opus|fable|default]"
 disable-model-invocation: true
-allowed-tools: Bash(python3 "${CLAUDE_SKILL_DIR}/../saythen/scripts/saythen_gate.py" model *)
+allowed-tools: {{ALLOWED_TOOLS:"${CLAUDE_SKILL_DIR}/../saythen/scripts/saythen_gate.py" model *}}
 ---
 
 # SayThen model
 
 Current setting:
-!`python3 "${CLAUDE_SKILL_DIR}/../saythen/scripts/saythen_gate.py" model`
+!`{{PYTHON}} "${CLAUDE_SKILL_DIR}/../saythen/scripts/saythen_gate.py" model`
 
 The user typed:
 
@@ -50,7 +50,7 @@ model, the approval dialog, and the approved task are not affected.
 With a word chosen, run this command once, with that word in place of
 `<name>`, and nothing else:
 
-    python3 "${CLAUDE_SKILL_DIR}/../saythen/scripts/saythen_gate.py" model <name>
+    {{PYTHON}} "${CLAUDE_SKILL_DIR}/../saythen/scripts/saythen_gate.py" model <name>
 
 Then tell the user the new setting in one sentence, and that it applies from
 their next `/saythen` request and does not change the session model. If the

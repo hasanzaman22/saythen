@@ -271,7 +271,8 @@ class Begin(GateTestCase):
         self.ask_and_answer("Approve", proposal="secret project plan 12345")
         path = self.state_dir / (SESSION + ".json")
         self.assertNotIn("secret project plan", path.read_text())
-        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        if os.name != "nt":  # Windows has no POSIX file modes
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
     def test_stale_state_files_are_removed(self):
         self.state_dir.mkdir(parents=True)
@@ -832,8 +833,41 @@ class DraftingModel(GateTestCase):
         self.assertNoDecision(self.run_gate("pre-tool-use", payload=payload))
 
 
+def install(*args, home):
+    """Run install.py the way a user would, into a temporary home directory."""
+    env = dict(os.environ, HOME=str(home), USERPROFILE=str(home), SAYTHEN_PYTHON=sys.executable)
+    env.pop("CLAUDE_CONFIG_DIR", None)
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "install.py"), *args],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return proc
+
+
+def frontmatter(path):
+    return path.read_text(encoding="utf-8").split("---", 2)[1]
+
+
+def hook_commands(text):
+    """{event: [command, *args]} from a rendered SKILL.md frontmatter."""
+    commands, current, command = {}, None, None
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped in ("PreToolUse:", "PostToolUse:", "UserPromptSubmit:"):
+            current = stripped[:-1]
+        elif stripped.startswith("command: ") and current:
+            command = json.loads(stripped[len("command: ") :])
+        elif stripped.startswith("args: ") and current:
+            commands[current] = [command] + json.loads(stripped[len("args: ") :])
+    return commands
+
+
 class SkillDefinition(unittest.TestCase):
-    """Static checks on SKILL.md, plus the hook commands it registers."""
+    """Static checks on the SKILL.md templates, plus the hooks install.py writes."""
 
     @classmethod
     def setUpClass(cls):
@@ -844,13 +878,14 @@ class SkillDefinition(unittest.TestCase):
         self.assertIn("\nname: saythen\n", self.frontmatter)
         self.assertIn("\ndisable-model-invocation: true\n", self.frontmatter)
         self.assertIn("\ndescription: ", self.frontmatter)
+        self.assertIn("\n{{HOOKS}}\n", self.frontmatter)
 
     def test_allowed_tools_cover_only_gate_begin_and_rules(self):
         line = [x for x in self.frontmatter.splitlines() if x.startswith("allowed-tools:")][0]
         self.assertEqual(
             line,
-            'allowed-tools: Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/saythen_gate.py" begin *) '
-            'Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/saythen_gate.py" rules)',
+            'allowed-tools: {{ALLOWED_TOOLS:"${CLAUDE_SKILL_DIR}/scripts/saythen_gate.py" begin *|'
+            '"${CLAUDE_SKILL_DIR}/scripts/saythen_gate.py" rules}}',
         )
 
     def test_shell_injection_lines_never_receive_arguments(self):
@@ -858,6 +893,7 @@ class SkillDefinition(unittest.TestCase):
         lines = [x for x in body.splitlines() if x.lstrip().startswith("!`")]
         self.assertEqual(len(lines), 2)
         for line in lines:
+            self.assertTrue(line.startswith("!`{{PYTHON}} "))
             self.assertNotIn("ARGUMENTS", line)
             self.assertNotRegex(line, r"\$[0-9]")
 
@@ -866,52 +902,28 @@ class SkillDefinition(unittest.TestCase):
 
     def test_model_skill_only_runs_the_gate_model_command(self):
         text = (ROOT / "skills" / "saythen-model" / "SKILL.md").read_text(encoding="utf-8")
-        frontmatter = text.split("---", 2)[1]
-        self.assertIn("\nname: saythen-model\n", frontmatter)
-        self.assertIn("\ndisable-model-invocation: true\n", frontmatter)
-        line = [x for x in frontmatter.splitlines() if x.startswith("allowed-tools:")][0]
+        front = text.split("---", 2)[1]
+        self.assertIn("\nname: saythen-model\n", front)
+        self.assertIn("\ndisable-model-invocation: true\n", front)
+        line = [x for x in front.splitlines() if x.startswith("allowed-tools:")][0]
         self.assertEqual(
             line,
-            'allowed-tools: Bash(python3 "${CLAUDE_SKILL_DIR}/../saythen/scripts/saythen_gate.py" '
-            "model *)",
+            'allowed-tools: {{ALLOWED_TOOLS:"${CLAUDE_SKILL_DIR}/../saythen/scripts/'
+            'saythen_gate.py" model *}}',
         )
         for line in text.split("---", 2)[2].splitlines():
             if line.lstrip().startswith("!`"):
                 self.assertNotIn("ARGUMENTS", line)
 
     def test_drafter_agent_is_read_only(self):
-        text = (ROOT / "agents" / "saythen-drafter.md").read_text(encoding="utf-8")
-        frontmatter = text.split("---", 2)[1]
-        self.assertIn("\nname: saythen-drafter\n", frontmatter)
-        self.assertIn("\ntools: Read, Glob, Grep\n", frontmatter)
-        self.assertNotIn("\nmodel:", frontmatter)
+        front = frontmatter(ROOT / "agents" / "saythen-drafter.md")
+        self.assertIn("\nname: saythen-drafter\n", front)
+        self.assertIn("\ntools: Read, Glob, Grep\n", front)
+        self.assertNotIn("\nmodel:", front)
 
-    def hook_commands(self):
-        commands = {}
-        current = None
-        for line in self.frontmatter.splitlines():
-            stripped = line.strip()
-            if stripped in ("PreToolUse:", "PostToolUse:", "UserPromptSubmit:"):
-                current = stripped[:-1]
-            elif stripped.startswith("command: ") and current:
-                value = stripped[len("command: ") :]
-                self.assertTrue(value.startswith("'") and value.endswith("'"))
-                commands[current] = value[1:-1]
-        return commands
-
-    def test_all_three_hooks_are_registered(self):
-        commands = self.hook_commands()
-        self.assertEqual(set(commands), {"PreToolUse", "PostToolUse", "UserPromptSubmit"})
-        self.assertIn("onFailure: block", self.frontmatter.split("PostToolUse:")[0])
-
-    def run_hook_command(self, command, home, project, state_dir):
-        env = dict(
-            os.environ,
-            HOME=str(home),
-            CLAUDE_PROJECT_DIR=str(project),
-            SAYTHEN_STATE_DIR=str(state_dir),
-        )
-        env.pop("CLAUDE_CONFIG_DIR", None)
+    def run_hook(self, command, project, state_dir):
+        # Claude Code fills in ${CLAUDE_PROJECT_DIR} and runs the command without a shell.
+        command = [part.replace("${CLAUDE_PROJECT_DIR}", str(project)) for part in command]
         payload = {
             "session_id": SESSION,
             "tool_name": "Bash",
@@ -919,42 +931,66 @@ class SkillDefinition(unittest.TestCase):
             "prompt": "x",
         }
         return subprocess.run(
-            ["sh", "-c", command],
+            command,
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            env=env,
+            env=dict(os.environ, SAYTHEN_STATE_DIR=str(state_dir)),
             timeout=30,
         )
 
-    def test_hook_commands_find_user_and_project_installs(self):
-        commands = self.hook_commands()
+    def test_installed_hooks_run_the_gate_for_user_and_project_installs(self):
         for location in ("user", "project"):
             with tempfile.TemporaryDirectory() as tmp:
                 tmp = Path(tmp)
                 home, project, state_dir = tmp / "home dir", tmp / "my project", tmp / "state"
-                base = home if location == "user" else project
-                shutil.copytree(SKILL_DIR, base / ".claude" / "skills" / "saythen")
+                home.mkdir()
+                project.mkdir()
+                args = ("--project", str(project)) if location == "project" else ()
+                install(*args, home=home)
+                base = (project if location == "project" else home) / ".claude"
+                skill = base / "skills" / "saythen" / "SKILL.md"
+                rendered = skill.read_text(encoding="utf-8")
+                self.assertNotIn("{{", rendered)
+                commands = hook_commands(frontmatter(skill))
+                self.assertEqual(set(commands), {"PreToolUse", "PostToolUse", "UserPromptSubmit"})
+                self.assertIn("onFailure: block", frontmatter(skill).split("PostToolUse:")[0])
+                if location == "project":
+                    self.assertIn("${CLAUDE_PROJECT_DIR}", commands["PreToolUse"][1])
                 subprocess.run(
                     [sys.executable, str(GATE), "begin", SESSION],
                     env=dict(os.environ, SAYTHEN_STATE_DIR=str(state_dir)),
                     check=True,
                     capture_output=True,
                 )
-                proc = self.run_hook_command(commands["PreToolUse"], home, project, state_dir)
+                proc = self.run_hook(commands["PreToolUse"], project, state_dir)
                 self.assertEqual(proc.returncode, 0, proc.stderr)
                 decision = json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecision"]
                 self.assertEqual(decision, "deny", location)
                 for event in ("PostToolUse", "UserPromptSubmit"):
-                    proc = self.run_hook_command(commands[event], home, project, state_dir)
+                    proc = self.run_hook(commands[event], project, state_dir)
                     self.assertEqual(proc.returncode, 0, proc.stderr)
 
-    def test_hook_command_fails_closed_when_gate_is_missing(self):
-        commands = self.hook_commands()
+    def test_hook_fails_closed_when_gate_is_missing(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
-            proc = self.run_hook_command(commands["PreToolUse"], tmp / "h", tmp / "p", tmp / "s")
-            self.assertNotEqual(proc.returncode, 0)
+            (tmp / "home").mkdir()
+            install(home=tmp / "home")
+            skill = tmp / "home" / ".claude" / "skills" / "saythen"
+            commands = hook_commands(frontmatter(skill / "SKILL.md"))
+            (skill / "scripts" / "saythen_gate.py").unlink()
+            proc = self.run_hook(commands["PreToolUse"], tmp, tmp / "s")
+            # Python exits with 2 when the script is missing, which blocks the call.
+            self.assertEqual(proc.returncode, 2)
+
+    def test_gate_output_is_utf8(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = dict(os.environ, SAYTHEN_STATE_DIR=tmp, PYTHONIOENCODING="cp1252")
+            proc = subprocess.run(
+                [sys.executable, str(GATE), "rules"], capture_output=True, env=env, timeout=30
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertIn("объясни".encode("utf-8"), proc.stdout)
 
 
 if __name__ == "__main__":

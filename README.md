@@ -231,10 +231,14 @@ the same request, and your next message ends the SayThen request.
 
 ## Requirements
 
-- Claude Code 2.1.295 or later, used interactively in a terminal. SayThen was
-  developed and tested with Claude Code 2.1.303 on macOS 26.5. Other
-  platforms and versions are untested.
-- `python3` (3.9 or later) on `PATH`. The gate uses only the standard library.
+- Claude Code 2.1.295 or later, used interactively in a terminal, on macOS,
+  Linux, or Windows. SayThen was developed and tested with Claude Code 2.1.304
+  on macOS 26.5; the unit tests also run on Linux and Windows in CI.
+- Python 3.9 or later. On macOS and Linux it must be on `PATH` as `python3`.
+  On Windows, the `py` launcher (installed by the python.org installer),
+  `python`, or `python3` works. The gate uses only the standard library.
+- On Windows, Git Bash is not needed: the hooks run Python directly, without
+  a shell.
 - No API keys, network services, or extra packages.
 
 ## Install
@@ -247,15 +251,16 @@ Paste this into Claude Code:
 Install SayThen from https://github.com/hasanzaman22/saythen
 ```
 
-Claude clones the repository to a temporary directory and runs
-`./install.sh`, which installs SayThen for your user. Claude Code asks for
+Claude clones the repository to a temporary directory and runs its
+installer, which installs SayThen for your user. Claude Code asks for
 permission before each command. Add "for this project only" to install into
 the current project instead.
 
-For Claude: clone the repository to a temporary directory, run `./install.sh`
-from it (or `./install.sh --project <current directory>` when the user asks
-for this project only), report what it printed, and delete the temporary
-clone.
+For Claude: clone the repository to a temporary directory and run
+`python3 install.py` from it (on Windows, `py install.py`, or `python
+install.py` if `py` is missing). Add `--project <current directory>` when the
+user asks for this project only. Report what it printed, then delete the
+temporary clone.
 
 ### Install by hand
 
@@ -264,38 +269,38 @@ Clone the repository, then install for your user (all projects):
 ```sh
 git clone https://github.com/hasanzaman22/saythen.git
 cd saythen
-./install.sh
+python3 install.py        # Windows: py install.py
 ```
 
-This copies `skills/saythen` and `skills/saythen-model` to `~/.claude/skills/`
+`./install.sh` does the same on macOS and Linux. The installer copies `skills/saythen` and `skills/saythen-model` to `~/.claude/skills/`
 and `agents/saythen-drafter.md` to `~/.claude/agents/`, or under
-`$CLAUDE_CONFIG_DIR` if you set it.
+`$CLAUDE_CONFIG_DIR` if you set it, and fills in the Python command and the
+hook commands for your machine.
 
 To install into a single project instead:
 
 ```sh
-./install.sh --project /path/to/your/project
+python3 install.py --project /path/to/your/project
 ```
 
 This copies the same files into `/path/to/your/project/.claude/`. Commit them
-if you want to share SayThen with your team.
+if you want to share SayThen with your team; the hooks find the gate through
+`${CLAUDE_PROJECT_DIR}`, so the install works on any machine whose Python
+command matches. Teammates on another OS can run the installer once
+themselves.
 
-You can also copy the files yourself:
+Copying the files by hand does not work, because the installer fills in
+`SKILL.md`.
 
-```sh
-mkdir -p ~/.claude/skills ~/.claude/agents
-cp -R skills/saythen skills/saythen-model ~/.claude/skills/
-cp agents/saythen-drafter.md ~/.claude/agents/
-```
-
-`install.sh` does not edit `settings.json` or any other configuration. It
+The installer does not edit `settings.json` or any other configuration. It
 refuses to overwrite a `saythen` or `saythen-model` skill, or a
 `saythen-drafter` agent, that is not part of SayThen.
 
-Install SayThen in one of those two places only. Its hooks look for the gate
-script in `~/.claude/skills/saythen` and then in
+Install SayThen in one of those two places only. A user install's hooks
+point at the gate script by its full path; a project install's hooks point at
 `<project root>/.claude/skills/saythen`, where `<project root>` is the
-directory you started Claude Code in.
+directory you started Claude Code in. Run the installer again after you move
+either one.
 
 Claude Code picks up new skills without a restart. Type `/` in a session and
 `saythen` appears in the command list.
@@ -353,7 +358,10 @@ proposal and stops without running anything.
 - Read-only access during drafting: `READ_ONLY_TOOLS` and
   `READ_ONLY_COMMANDS` in `skills/saythen/scripts/saythen_gate.py`.
 - State location: set `SAYTHEN_STATE_DIR`. The default is
-  `$XDG_STATE_HOME/saythen`, or `~/.local/state/saythen`.
+  `$XDG_STATE_HOME/saythen` or `~/.local/state/saythen`, and
+  `%LOCALAPPDATA%\saythen` on Windows.
+- Python command: set `SAYTHEN_PYTHON` (for example `py -3.12`) before you run
+  the installer.
 
 ## Limitations
 
@@ -409,16 +417,19 @@ Read these before you rely on SayThen.
 ## Uninstall
 
 ```sh
-./install.sh --uninstall                         # user install
-./install.sh --uninstall --project /path/to/project
+python3 install.py --uninstall                         # user install
+python3 install.py --uninstall --project /path/to/project
 ```
+
+On Windows, use `py install.py` in place of `python3 install.py`.
 
 Or delete the files yourself: `~/.claude/skills/saythen`,
 `~/.claude/skills/saythen-model`, and `~/.claude/agents/saythen-drafter.md`.
 
 Hooks that `/saythen` already registered stay active in running sessions, so
-restart those. Session state files are in `~/.local/state/saythen` (or
-`$SAYTHEN_STATE_DIR`); delete that directory to remove them. Each file holds
+restart those. Session state files are in `~/.local/state/saythen`
+(`%LOCALAPPDATA%\saythen` on Windows, or `$SAYTHEN_STATE_DIR`); delete that
+directory to remove them. Each file holds
 only a status and hashes, never your request.
 
 ## Testing
@@ -458,7 +469,8 @@ skills/saythen-model/
   SKILL.md                  /saythen-model: choose the drafting model
 agents/
   saythen-drafter.md        Read-only subagent that drafts on the chosen model
-install.sh                  Install and uninstall
+install.py                  Install and uninstall, on every OS
+install.sh                  Runs install.py on macOS and Linux
 tests/                      Unit tests, scenario evals, live checks
 ```
 
