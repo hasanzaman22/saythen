@@ -153,7 +153,7 @@ class GateTestCase(unittest.TestCase):
             [sys.executable, str(GATE), *args],
             input=stdin,
             capture_output=True,
-            text=True,
+            encoding="utf-8",
             env=env or self.env,
             timeout=30,
         )
@@ -840,7 +840,7 @@ def install(*args, home):
     proc = subprocess.run(
         [sys.executable, str(ROOT / "install.py"), *args],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
         env=env,
         timeout=60,
     )
@@ -934,7 +934,7 @@ class SkillDefinition(unittest.TestCase):
             command,
             input=json.dumps(payload),
             capture_output=True,
-            text=True,
+            encoding="utf-8",
             env=dict(os.environ, SAYTHEN_STATE_DIR=str(state_dir)),
             timeout=30,
         )

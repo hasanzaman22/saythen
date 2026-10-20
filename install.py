@@ -108,7 +108,8 @@ def render(path: Path, python: List[str], gate: str) -> None:
         text = text.replace(allowed.group(0), render_allowed_tools(command, commands))
     text = text.replace("{{HOOKS}}", render_hooks(python, gate))
     text = text.replace("{{PYTHON}}", command)
-    path.write_text(text, encoding="utf-8", newline="\n")
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
 
 
 def name_in(path: Path, name: str) -> bool:
@@ -237,6 +238,11 @@ def run(argv: List[str]) -> int:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
     try:
         return run(sys.argv[1:] if argv is None else argv)
     except InstallError as exc:

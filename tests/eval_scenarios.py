@@ -178,7 +178,7 @@ def run_scenario(scenario: Dict[str, Any], model: str, system_prompt: str) -> Di
     proc = subprocess.run(
         cmd,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
         timeout=300,
         stdin=subprocess.DEVNULL,
         cwd=str(FIXTURES / project) if project else None,

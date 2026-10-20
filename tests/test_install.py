@@ -32,7 +32,7 @@ class InstallScript(unittest.TestCase):
         return subprocess.run(
             [sys.executable, str(INSTALL), *args],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
             env=self.env,
             timeout=60,
         )
@@ -125,7 +125,7 @@ class InstallScript(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "install.sh is for macOS and Linux")
     def test_install_sh_runs_install_py(self):
         proc = subprocess.run(
-            ["sh", str(INSTALL_SH)], capture_output=True, text=True, env=self.env, timeout=60
+            ["sh", str(INSTALL_SH)], capture_output=True, encoding="utf-8", env=self.env, timeout=60
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertInstalled(self.home / ".claude" / "skills" / "saythen")
