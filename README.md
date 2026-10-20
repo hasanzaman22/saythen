@@ -2,6 +2,8 @@
 
 **Say what you mean. Let AI understand.**
 
+![SayThen turning "bina plani ciz" into an approved English instruction in Claude Code](docs/demo.gif)
+
 SayThen is a Claude Code skill. You type `/saythen` and a request in any
 language, slang and typos included. SayThen rewrites it as a clear English
 instruction sized to the task and shows it to you in one dialog, in your
