@@ -2,7 +2,7 @@
 
 **Say what you mean. Let AI understand.**
 
-![SayThen turning "bina plani ciz" into an approved English instruction in Claude Code](docs/demo.gif)
+![SayThen turning "not tutmaq ucun proqram yaz" into an approved English instruction in Claude Code](docs/demo.gif)
 
 SayThen is a Claude Code skill. You type `/saythen` and a request in any
 language, slang and typos included. SayThen rewrites it as a clear English
@@ -11,19 +11,20 @@ language and in English. You pick which version Claude receives, and nothing
 runs until you approve it.
 
 ```text
-/saythen bina plani ciz
+/saythen not tutmaq ucun proqram yaz
 ```
 
 ```text
-☐ Oxu  ☐ Read  ☐ Cavab dili  ☐ SayThen
+☐ Oxu  ☐ Oxu (EN)  ☐ Cavab dili  ☐ SayThen
 
-Oxu: ↑/↓ ilə səhifələri çevirin
-❯ 1. Səhifə 1/2   ┌ Təcrübəli memar kimi çıxış et. Bina üçün
-  2. Səhifə 2/2   │ mərtəbə planı hazırla.
-                  │ - Hər otağı adlandır və ölçülərini göstər.
+Oxu: ↑/↓ səhifələri çevirir (azərbaycanca)
+❯ 1. Səhifə 1/2   ┌ Məqsəd
+  2. Səhifə 2/2   │ İstifadəçinin qeydlər saxlaya bilməsi üçün proqram yazın.
+                  │ Tələblər
+                  │ - İstifadəçi yeni qeyd əlavə edə bilsin.
                   └ ...
 
-Read: the same pages in English (the text Claude receives by default)
+Oxu (EN): the same pages in English (the text Claude receives by default)
 
 Cavab dili
 ❯ Azərbaycanca (tövsiyə)
