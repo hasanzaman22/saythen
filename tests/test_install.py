@@ -115,6 +115,7 @@ class InstallScript(unittest.TestCase):
         self.assertIn(tools, text)
         self.assertEqual("PowerShell(" in text, os.name == "nt")
 
+    @unittest.skipIf(os.name == "nt", "Windows finds py.exe in its system folder even without PATH")
     def test_missing_python_is_reported(self):
         self.env["SAYTHEN_PYTHON"] = "no-such-python-here"
         self.env["PATH"] = str(self.tmp)
