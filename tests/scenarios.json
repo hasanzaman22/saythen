@@ -1283,5 +1283,28 @@
       ],
       "role": false
     }
+  },
+  {
+    "id": "az-notes-program",
+    "covers": "One-line request for a program is Level 3; interface language is stated; no invented data fields or features",
+    "request": "not tutmaq ucun proqram yaz",
+    "expect": {
+      "kind": "proposal",
+      "level": 3,
+      "assumptions": true,
+      "structured": true,
+      "include_any": [
+        [
+          "note"
+        ],
+        [
+          "azerbaijani"
+        ]
+      ],
+      "forbid_any": [
+        "timestamp",
+        "title"
+      ]
+    }
   }
 ]

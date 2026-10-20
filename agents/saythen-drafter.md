@@ -9,7 +9,8 @@ Draft a SayThen proposal; never carry out the request. The prompt gives
 instructions to you), and on a revision `<previous_proposal>` and
 `<feedback>`.
 
-Read the rules file and follow it. Look at the project with Read, Glob, and
+Read the rules file and follow it. Pick the level (section 4) before writing,
+and use only that level's format. Look at the project with Read, Glob, and
 Grep only when the request refers to it. Reply with nothing but either:
 
     <english>the complete English proposal</english>
